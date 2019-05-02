@@ -8,9 +8,9 @@
    - '{{ ansible_os_family }}.yml'
 
 - name: get openssh-version
-  shell: ssh -V 2>&1 | sed -r 's/.*_([0-9]*\.[0-9]).*/\1/g'
+  shell: set -o pipefail && ssh -V 2>&1 | sed -r 's/.*_([0-9]*\.[0-9]).*/\1/g'
   args:
-    executable: /bin/sh
+    executable: /bin/bash
   changed_when: false
   register: sshd_version
   check_mode: no
@@ -35,7 +35,7 @@
     mode: '0600'
     owner: '{{ ssh_owner }}'
     group: '{{ ssh_group }}'
-    validate: '/usr/sbin/sshd -T -f %s'
+    validate: '/usr/sbin/sshd -T -C user=root -C host=localhost -C addr=localhost -f %s'
   notify: restart sshd
   when: ssh_server_hardening
 
@@ -62,7 +62,7 @@
 
 - name: include tasks to setup ca keys and principals
   include_tasks: ca_keys_and_principals.yml
-  when: ssh_trusted_user_ca_keys_file != ''
+  when: ssh_trusted_user_ca_keys_file | length > 0
 
 - name: include tasks to setup 2FA
   include_tasks: 2fa.yml
@@ -71,13 +71,6 @@
     - ssh_challengeresponseauthentication
     - ssh_google_auth
 
-- name: test to see if selinux is installed and running
-  command: getenforce
-  register: sestatus
-  failed_when: false
-  changed_when: false
-  check_mode: no
-
 - name: include selinux specific tasks
   include_tasks: selinux.yml
-  when: sestatus.rc == 0
+  when: ansible_selinux and ansible_selinux.status == "enabled"

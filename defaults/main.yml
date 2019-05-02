@@ -48,8 +48,8 @@ ssh_permit_tunnel: false
 #     options: ['StrictHostKeyChecking no']
 ssh_remote_hosts: []
 
-# false to disable root login altogether. Set to true to allow root to login via key-based mechanism.
-ssh_allow_root_with_key: false          # sshd
+# Set this to "without-password" or "yes" to allow root to login
+ssh_permit_root_login: 'no'          # sshd
 
 # false to disable TCP Forwarding. Set to true to allow TCP Forwarding.
 ssh_allow_tcp_forwarding: false         # sshd
@@ -74,7 +74,7 @@ ssh_google_auth: false # sshd
 ssh_pam_device: false # sshd
 
 # true if SSH support GSSAPI
-ssh_gssapi_support: true
+ssh_gssapi_support: false
 
 # true if SSH support Kerberos
 ssh_kerberos_support: true
@@ -221,3 +221,9 @@ ssh_server_revoked_keys: []
 # Set to false to turn the role into a no-op. Useful when using
 # the Ansible role dependency mechanism.
 ssh_hardening_enabled: true
+
+# Custom options for SSH client configuration file
+ssh_custom_options: []
+
+# Custom options for SSH daemon configuration file
+sshd_custom_options: []

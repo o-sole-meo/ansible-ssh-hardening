@@ -12,7 +12,7 @@ Warning: This role disables root-login on the target server! Please make sure yo
 
 ## Requirements
 
-* Ansible > 2.4
+* Ansible > 2.5
 
 ## Role Variables
 | Name           | Default Value | Description                        |
@@ -26,13 +26,13 @@ Warning: This role disables root-login on the target server! Please make sure yo
 |`ssh_client_alive_count` | 3 | defines how often keep-alive messages are sent |
 |`ssh_permit_tunnel` | false | true if SSH Port Tunneling is required |
 |`ssh_remote_hosts` | [] | one or more hosts and their custom options for the ssh-client. Default is empty. See examples in `defaults/main.yml`.|
-|`ssh_allow_root_with_key` | false | false to disable root login altogether. Set to true to allow root to login via key-based mechanism.|
+|`ssh_permit_root_login` | no | Disable root-login. Set to `without-password` or `yes` to enable root-login |
 |`ssh_allow_tcp_forwarding` | false | false to disable TCP Forwarding. Set to true to allow TCP Forwarding.|
 |`ssh_gateway_ports` | `false` | `false` to disable binding forwarded ports to non-loopback addresses. Set to `true` to force binding on wildcard address. Set to `clientspecified` to allow the client to specify which address to bind to.|
 |`ssh_allow_agent_forwarding` | false | false to disable Agent Forwarding. Set to true to allow Agent Forwarding.|
 |`ssh_pam_support` | true | true if SSH has PAM support.|
 |`ssh_use_pam` | false | false to disable pam authentication.|
-|`ssh_gssapi_support` | true | true if SSH has GSSAPI support.|
+|`ssh_gssapi_support` | false | true if SSH has GSSAPI support.|
 |`ssh_kerberos_support` | true | true if SSH has Kerberos support.|
 |`ssh_deny_users` | '' | if specified, login is disallowed for user names that match one of the patterns.|
 |`ssh_allow_users` | '' | if specified, login is allowed only for user names that match one of the patterns.|
@@ -73,6 +73,25 @@ Warning: This role disables root-login on the target server! Please make sure yo
 |`ssh_macs` | [] | Change this list to overwrite macs. Defaults found in `defaults/main.yml` |
 |`ssh_kex` | [] | Change this list to overwrite kexs. Defaults found in `defaults/main.yml` |
 |`ssh_ciphers` | [] | Change this list to overwrite ciphers. Defaults found in `defaults/main.yml` |
+|`ssh_custom_options` | [] | Custom lines for SSH client configuration |
+|`sshd_custom_options` | [] | Custom lines for SSH daemon configuration |
+
+## Configuring settings not listed in role-variables
+
+If you want to configure ssh options that are not listed above, you can use `ssh_custom_options` (for `/etc/ssh/ssh_config`) or `sshd_custom_options` (for `/etc/ssh/sshd_config`) to set them. These options will be set on the **beginning** of the file so you can override options further down in the file.
+
+Example playbook:
+
+```
+- hosts: localhost
+  roles:
+    - dev-sec.ssh-hardening
+  vars:
+    ssh_custom_options:
+      - "Include /etc/ssh/ssh_config.d/*"
+    sshd_custom_options:
+      - "AcceptEnv LANG"
+```
 
 ## Example Playbook
 
@@ -97,27 +116,27 @@ bundle install
 ### Testing with Docker
 ```
 # fast test on one machine
-bundle exec kitchen test default-ubuntu-1204
+bundle exec kitchen test ssh-ubuntu1804-ansible-latest
 
 # test on all machines
 bundle exec kitchen test
 
 # for development
-bundle exec kitchen create default-ubuntu-1204
-bundle exec kitchen converge default-ubuntu-1204
+bundle exec kitchen create ssh-ubuntu1804-ansible-latest
+bundle exec kitchen converge ssh-ubuntu1804-ansible-latest
 ```
 
 ### Testing with Virtualbox
 ```
 # fast test on one machine
-KITCHEN_YAML=".kitchen.vagrant.yml" bundle exec kitchen test default-ubuntu-1204
+KITCHEN_YAML=".kitchen.vagrant.yml" bundle exec kitchen test ssh-ubuntu-1804
 
 # test on all machines
 KITCHEN_YAML=".kitchen.vagrant.yml" bundle exec kitchen test
 
 # for development
-KITCHEN_YAML=".kitchen.vagrant.yml" bundle exec kitchen create default-ubuntu-1204
-KITCHEN_YAML=".kitchen.vagrant.yml" bundle exec kitchen converge default-ubuntu-1204
+KITCHEN_YAML=".kitchen.vagrant.yml" bundle exec kitchen create ssh-ubuntu-1804
+KITCHEN_YAML=".kitchen.vagrant.yml" bundle exec kitchen converge ssh-ubuntu-1804
 ```
 For more information see [test-kitchen](http://kitchen.ci/docs/getting-started)
 
