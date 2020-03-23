@@ -16,7 +16,8 @@ galaxy_info:
         - bionic
     - name: Debian
       versions:
-        - jessie
+        - stretch
+        - buster
     - name: Amazon
     - name: Fedora
   galaxy_tags:

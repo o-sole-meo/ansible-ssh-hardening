@@ -27,11 +27,11 @@ Warning: This role disables root-login on the target server! Please make sure yo
 |`ssh_permit_tunnel` | false | true if SSH Port Tunneling is required |
 |`ssh_remote_hosts` | [] | one or more hosts and their custom options for the ssh-client. Default is empty. See examples in `defaults/main.yml`.|
 |`ssh_permit_root_login` | no | Disable root-login. Set to `without-password` or `yes` to enable root-login |
-|`ssh_allow_tcp_forwarding` | false | false to disable TCP Forwarding. Set to true to allow TCP Forwarding.|
+|`ssh_allow_tcp_forwarding` | no | `no` to disable TCP Forwarding. Set to `yes` to allow TCP Forwarding. If you are using OpenSSH >= 6.2 version, you can specify `yes`, `no`, `all` or `local`|
 |`ssh_gateway_ports` | `false` | `false` to disable binding forwarded ports to non-loopback addresses. Set to `true` to force binding on wildcard address. Set to `clientspecified` to allow the client to specify which address to bind to.|
 |`ssh_allow_agent_forwarding` | false | false to disable Agent Forwarding. Set to true to allow Agent Forwarding.|
 |`ssh_pam_support` | true | true if SSH has PAM support.|
-|`ssh_use_pam` | false | false to disable pam authentication.|
+|`ssh_use_pam` | true | false to disable pam authentication.|
 |`ssh_gssapi_support` | false | true if SSH has GSSAPI support.|
 |`ssh_kerberos_support` | true | true if SSH has Kerberos support.|
 |`ssh_deny_users` | '' | if specified, login is disallowed for user names that match one of the patterns.|
@@ -46,6 +46,7 @@ Warning: This role disables root-login on the target server! Please make sure yo
 |`ssh_print_motd` | false | false to disable printing of the MOTD|
 |`ssh_print_last_log` | false | false to disable display of last login information|
 |`sftp_enabled` | false | true to enable sftp configuration|
+|`sftp_umask` | 0027 | Specifies the umask for sftp|
 |`sftp_chroot` | true | false to disable chroot for sftp|
 |`sftp_chroot_dir` | /home/%u | change default sftp chroot location|
 |`ssh_client_roaming` | false | enable experimental client roaming|
@@ -54,8 +55,6 @@ Warning: This role disables root-login on the target server! Please make sure yo
 |`ssh_challengeresponseauthentication` | false | Specifies whether challenge-response authentication is allowed (e.g. via PAM) |
 |`ssh_client_password_login` | false | `true` to allow password-based authentication with the ssh client |
 |`ssh_server_password_login` | false | `true` to allow password-based authentication with the ssh server |
-|`ssh_google_auth` | false | `true` to enable google authenticator based TOTP 2FA |
-|`ssh_pam_device` | false | `true` to enable  public key auth with pam device 2FA |
 |`ssh_banner` | `false` | `true` to print a banner on login |
 |`ssh_client_hardening` | `true` | `false` to stop harden the client |
 |`ssh_client_port` | `'22'` | Specifies the port number to connect on the remote host. |
@@ -64,9 +63,11 @@ Warning: This role disables root-login on the target server! Please make sure yo
 |`ssh_print_debian_banner` | `false` | `true` to print debian specific banner |
 |`ssh_server_enabled` | `true` | `false` to disable the opensshd server |
 |`ssh_server_hardening` | `true` | `false` to stop harden the server |
+|`ssh_server_match_address` | '' | Introduces a conditional block.  If all of the criteria on the Match line are satisfied, the keywords on the following lines override those set in the global section of the config file, until either another Match line or the end of the file. |
 |`ssh_server_match_group` | '' | Introduces a conditional block.  If all of the criteria on the Match line are satisfied, the keywords on the following lines override those set in the global section of the config file, until either another Match line or the end of the file. |
 |`ssh_server_match_user` | '' | Introduces a conditional block.  If all of the criteria on the Match line are satisfied, the keywords on the following lines override those set in the global section of the config file, until either another Match line or the end of the file. |
-|`ssh_server_permit_environment_vars` | `false` | `true` to specify that ~/.ssh/environment and environment= options in ~/.ssh/authorized_keys are processed by sshd |
+|`ssh_server_permit_environment_vars` | `no` | `yes` to specify that ~/.ssh/environment and environment= options in ~/.ssh/authorized_keys are processed by sshd. With openssh version 7.8 it is possible to specify a whitelist of environment variable names in addition to global "yes" or "no" settings |
+|`ssh_server_accept_env_vars`| '' | Specifies what environment variables sent by the client will be copied into the session's enviroment, multiple environment variables may be separated by whitespace |
 |`ssh_use_dns` | `false` | Specifies whether sshd should look up the remote host name, and to check that the resolved host name for the remote IP address maps back to the very same IP address. |
 |`ssh_server_revoked_keys` | [] | a list of revoked public keys that the ssh server will always reject, useful to revoke known weak or compromised keys.|
 |`ssh_max_startups` | '10:30:100' | Specifies the maximum number of concurrent unauthenticated connections to the SSH daemon.|
@@ -75,6 +76,10 @@ Warning: This role disables root-login on the target server! Please make sure yo
 |`ssh_ciphers` | [] | Change this list to overwrite ciphers. Defaults found in `defaults/main.yml` |
 |`ssh_custom_options` | [] | Custom lines for SSH client configuration |
 |`sshd_custom_options` | [] | Custom lines for SSH daemon configuration |
+|`sshd_syslog_facility` | 'AUTH' | The facility code that is used when logging messages from sshd |
+|`sshd_log_level` | 'VERBOSE' | the verbosity level that is used when logging messages from sshd |
+|`sshd_strict_modes` | 'yes' | Check file modes and ownership of the user's files and home directory before accepting login |
+|`sshd_authenticationmethods` | `publickey` | Specifies the authentication methods that must be successfully completed for a user to be granted access. Make sure to set all required variables for your selected authentication method. Defaults found in `defaults/main.yml`
 
 ## Configuring settings not listed in role-variables
 
@@ -124,6 +129,10 @@ bundle exec kitchen test
 # for development
 bundle exec kitchen create ssh-ubuntu1804-ansible-latest
 bundle exec kitchen converge ssh-ubuntu1804-ansible-latest
+bundle exec kitchen verify ssh-ubuntu1804-ansible-latest
+
+# cleanup
+bundle exec kitchen destroy ssh-ubuntu1804-ansible-latest
 ```
 
 ### Testing with Virtualbox

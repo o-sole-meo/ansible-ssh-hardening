@@ -32,7 +32,7 @@ ListenAddress {{address}}
 
 # List HostKeys here.
 {% for key in ssh_host_key_files -%}
-HostKey {{key}}          # Req 20
+HostKey {{key}}
 {% endfor %}
 
 # Security configuration
@@ -42,11 +42,11 @@ HostKey {{key}}          # Req 20
 Protocol 2
 
 # Make sure sshd checks file modes and ownership before accepting logins. This prevents accidental misconfiguration.
-StrictModes yes
+StrictModes {{ 'yes' if (sshd_strict_modes|bool) else 'no' }}
 
 # Logging, obsoletes QuietMode and FascistLogging
-SyslogFacility AUTH
-LogLevel VERBOSE
+SyslogFacility {{ sshd_syslog_facility }}
+LogLevel {{ sshd_log_level }}
 
 # Cryptography
 # ------------
@@ -83,10 +83,10 @@ LogLevel VERBOSE
 # --------------
 
 # Secure Login directives.
-{% if sshd_version.stdout is version('7.4', '<') %}
+{% if sshd_version is version('7.4', '<') %}
 UseLogin no
 {% endif %}
-{% if sshd_version.stdout is version('7.5', '<') %}
+{% if sshd_version is version('7.5', '<') %}
 UsePrivilegeSeparation {% if (ansible_distribution == 'Debian' and ansible_distribution_major_version <= '6') or (ansible_os_family in ['Oracle Linux', 'RedHat'] and ansible_distribution_major_version <= '6') -%}{{ssh_ps53}}{% else %}{{ssh_ps59}}{% endif %}
 {% endif %}
 
@@ -107,14 +107,11 @@ HostbasedAuthentication no
 {% if ssh_pam_support -%}
 UsePAM {{ 'yes' if (ssh_use_pam|bool) else 'no' }}
 {% endif %}
-{% if ssh_google_auth %}
-# Force public key auth then ask for google auth code
-AuthenticationMethods publickey,keyboard-interactive
-{% endif %}
 
-# Force public key auth then ask for pam device input
-{% if ssh_pam_device %}
-AuthenticationMethods publickey,keyboard-interactive:pam
+# Set AuthenticationMethods per default to publickey
+# AuthenticationMethods was introduced in OpenSSH 6.2 - https://www.openssh.com/txt/release-6.2
+{% if sshd_version is version('6.2', '>=') %}
+AuthenticationMethods {{ sshd_authenticationmethods }}
 {% endif %}
 
 # Disable password-based authentication, it can allow for potentially easier brute-force attacks.
@@ -177,7 +174,11 @@ PermitTunnel {{ 'yes' if (ssh_permit_tunnel|bool) else 'no' }}
 
 # Disable forwarding tcp connections.
 # no real advantage without denied shell access
-AllowTcpForwarding {{ 'yes' if (ssh_allow_tcp_forwarding|bool) else 'no' }}
+{% if sshd_version is version('6.2', '>=') %}
+AllowTcpForwarding {{ ssh_allow_tcp_forwarding if (ssh_allow_tcp_forwarding in ('yes', 'no', 'local', 'all')) else 'no' }}
+{% else %}
+AllowTcpForwarding {{ ssh_allow_tcp_forwarding if (ssh_allow_tcp_forwarding in ('yes', 'no')) else 'no' }}
+{% endif %}
 
 # Disable agent forwarding, since local agent could be accessed through forwarded connection.
 # no real advantage without denied shell access
@@ -201,13 +202,10 @@ X11UseLocalhost yes
 # User environment configuration
 # ==============================
 
-{% if ssh_server_permit_environment_vars -%}
-PermitUserEnvironment yes
-{% for item in ssh_server_permit_environment_vars -%}
-AcceptEnv {{ item }}
-{% endfor %}
-{% else -%}
-PermitUserEnvironment no
+PermitUserEnvironment {{ ssh_server_permit_environment_vars }}
+
+{% if ssh_server_accept_env_vars -%}
+AcceptEnv {{ ssh_server_accept_env_vars }}
 {% endif %}
 
 # Misc. configuration
@@ -239,12 +237,12 @@ RevokedKeys /etc/ssh/revoked_keys
 # override default of no subsystems
 # Subsystem sftp /opt/app/openssh5/libexec/sftp-server
 
-Subsystem sftp internal-sftp -l INFO -f LOCAL6
+Subsystem sftp internal-sftp -l INFO -f LOCAL6 -u {{ sftp_umask }}
 
 # These lines must appear at the *end* of sshd_config
 Match Group sftponly
-    ForceCommand internal-sftp -l INFO -f LOCAL6
-{% if sftp_chroot -%}
+    ForceCommand internal-sftp -l INFO -f LOCAL6 -u {{ sftp_umask }}
+{% if sftp_chroot %}
     ChrootDirectory {{ sftp_chroot_dir }}
 {% endif %}
     AllowTcpForwarding no
@@ -254,13 +252,25 @@ Match Group sftponly
     X11Forwarding no
 {% endif %}
 
+{% if ssh_server_match_address -%}
+# Address matching configuration
+# ============================
+
+{% for item in ssh_server_match_address -%}
+Match Address {{ item.address }}
+  {% for rule in item.rules %}
+    {{ rule | indent(4) }}
+  {% endfor %}
+{% endfor %}
+{% endif %}
+
 {% if ssh_server_match_group -%}
 # Group matching configuration
 # ============================
 
 {% for item in ssh_server_match_group -%}
 Match Group {{ item.group }}
-  {% for rule in item.rules -%}
+  {% for rule in item.rules %}
     {{ rule | indent(4) }}
   {% endfor %}
 {% endfor %}
@@ -272,7 +282,7 @@ Match Group {{ item.group }}
 
 {% for item in ssh_server_match_user -%}
 Match User {{ item.user }}
-  {% for rule in item.rules -%}
+  {% for rule in item.rules %}
     {{ rule | indent(4) }}
   {% endfor %}
 {% endfor %}
